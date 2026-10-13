@@ -48,6 +48,7 @@ import { getETA } from './utils/etaCalculation';
 import { useNotificationPermission } from './hooks/useNotificationPermission';
 import { CallProvider } from './contexts/CallContext';
 import { CallOverlay } from './components/CallOverlay';
+import { ActiveOrderProvider } from './hooks/useActiveOrder';
 
 interface AppState {
   selectedDestination: string;
@@ -540,12 +541,14 @@ function App() {
           transition={{ duration: 0.2 }}
           style={{ minHeight: '100vh' }}
         >
-          <Router>
-            <CallProvider>
-              <AppContent userId={authUser!.uid} />
-              <CallOverlay />
-            </CallProvider>
-          </Router>
+      <Router>
+        <ActiveOrderProvider uid={authUser!.uid}>
+          <CallProvider>
+            <AppContent userId={authUser!.uid} />
+            <CallOverlay />
+          </CallProvider>
+        </ActiveOrderProvider>
+      </Router>
         </motion.div>
       ) : (
         <motion.div
