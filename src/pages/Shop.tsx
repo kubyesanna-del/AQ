@@ -201,7 +201,7 @@ export const Shop: React.FC = () => {
       orderPath = '/order-small-shops';
     }
     
-    navigate(`${orderPath}/${store.id}`, { replace: true });
+    navigate(`${orderPath}/${store.id}`);
   };
 
   if (loading) {

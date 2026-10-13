@@ -381,7 +381,6 @@ export function FoodDelivery() {
       : null;
 
 navigate('/confirm-order', {
-    replace: true,
     state: {
         orderType: 'delivery',
         type: category,
