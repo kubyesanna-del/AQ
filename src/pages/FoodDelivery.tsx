@@ -120,6 +120,14 @@ export function FoodDelivery() {
   const stops = routeData?.stops || [];
   const category = routeData?.category || cart[0]?.category || 'food';
 
+  const storeDistanceKm = useMemo(() => {
+    const d = routeData?.deliveryCoords;
+    const s = routeData?.storeLocation;
+    return d?.lat != null && d?.lng != null && s?.lat != null && s?.lng != null
+      ? haversineDistanceKm(d.lat, d.lng, s.lat, s.lng)
+      : null;
+  }, [routeData?.deliveryCoords, routeData?.storeLocation]);
+
   // Determine service type based on category
   // food, clothes, market, and small shops use 'courier'; hardware uses 'delivery'
   const totalKg = getTotalKgExact();
@@ -168,10 +176,6 @@ export function FoodDelivery() {
           lat: s.lat ?? 0,
           lng: s.lng ?? 0,
         }));
-
-      const storeDistanceKm = deliveryCoords?.lat != null && deliveryCoords?.lng != null && storeLocation.lat != null && storeLocation.lng != null
-        ? haversineDistanceKm(deliveryCoords.lat, deliveryCoords.lng, storeLocation.lat, storeLocation.lng)
-        : null;
 
       const payload: Record<string, unknown> = {
         pickup: storeAddress || 'Store',
@@ -227,7 +231,7 @@ export function FoodDelivery() {
     } finally {
       setIsLoading(false);
     }
-  }, [routeData, cart, deliveryLocation, stops, serviceType, category, getKgRange, latitude, longitude, totalKg]);
+  }, [routeData, cart, deliveryLocation, stops, serviceType, category, getKgRange, latitude, longitude, totalKg, storeDistanceKm]);
 
   // Re-fetch on every navigation to this page so the backend is called fresh
   // each time (e.g. returning after changing the delivery address or stops).
@@ -376,9 +380,6 @@ export function FoodDelivery() {
     const destinationCoords = deliveryCoords?.lat && deliveryCoords?.lng
       ? { lat: deliveryCoords.lat, lng: deliveryCoords.lng }
       : undefined;
-    const storeDistanceKm = deliveryCoords?.lat != null && deliveryCoords?.lng != null && storeLocation.lat != null && storeLocation.lng != null
-      ? haversineDistanceKm(deliveryCoords.lat, deliveryCoords.lng, storeLocation.lat, storeLocation.lng)
-      : null;
 
 navigate('/confirm-order', {
     state: {
