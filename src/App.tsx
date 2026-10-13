@@ -78,6 +78,7 @@ function AppContent({ userId }: { userId: string }) {
     currentRideId: localStorage.getItem('currentRideId'),
   });
 
+  const { order, isLoading: isActiveOrderLoading } = useActiveOrder();
   const { currentRide } = useFirebaseRide(appState.currentRideId);
   const [rideStatus, setRideStatus] = useState<string | null>(null);
   const [driverInfo, setDriverInfo] = useState<any>(null);
@@ -97,56 +98,11 @@ function AppContent({ userId }: { userId: string }) {
   // (wired in main.tsx). Pages read it via useGeolocation / useLocation.
 
   useEffect(() => {
-    const rideId = localStorage.getItem('currentRideId');
-    if (rideId) {
-      setAppState(prev => ({ ...prev, currentRideId: rideId }));
-      navigate('/');
-    }
-  }, []);
-
-  useEffect(() => {
-    const handleOnline = () => {
-      console.log('Back online, syncing ride state...');
-      const rideId = localStorage.getItem('currentRideId');
-      if (rideId) {
-        setAppState(prev => ({ ...prev, currentRideId: rideId }));
-        navigate('/');
-      }
-    };
-
-    const handleOffline = () => {
-      console.warn('No internet connection. Reconnecting when available...');
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, [navigate]);
-
-  useEffect(() => {
     if (!appState.currentRideId) return;
 
     const unsubscribe = firebaseService.listenToRideStatus(appState.currentRideId, (statusData) => {
       if (statusData) {
         setRideStatus(statusData.status);
-
-        if (statusData.status === 'pending' && location.pathname !== '/waiting-for-driver') {
-          navigate('/waiting-for-driver');
-        }
-
-        if (statusData.status === 'accepted' && location.pathname !== '/driver-coming') {
-          navigate('/driver-coming');
-        }
-
-        if (statusData.status === 'arrived' || statusData.status === 'in_progress') {
-          if (location.pathname !== '/driver-coming') {
-            navigate('/driver-coming');
-          }
-        }
 
         if (statusData.status === 'completed') {
           setShowRatingModal(true);
@@ -177,7 +133,7 @@ function AppContent({ userId }: { userId: string }) {
   };
 
   const handleSearchSelect = (address: string) => {
-    if (isRideActive()) {
+    if (isRideActive) {
       alert('You already have an active ride.');
       navigate('/driver-coming');
       return;
@@ -187,7 +143,7 @@ function AppContent({ userId }: { userId: string }) {
   };
 
   const handleRideSelect = (carType: string, price: number) => {
-    if (isRideActive()) {
+    if (isRideActive) {
       alert('You already have an active ride.');
       navigate('/driver-coming');
       return;
@@ -197,7 +153,7 @@ function AppContent({ userId }: { userId: string }) {
   };
 
   const handleConfirmOrder = () => {
-    if (isRideActive()) {
+    if (isRideActive) {
       alert('You already have an active ride.');
       navigate('/driver-coming');
       return;
@@ -220,11 +176,11 @@ function AppContent({ userId }: { userId: string }) {
   const handleBack = () => {
     const blockedPaths = ['/waiting-for-driver', '/confirm-order', '/select-ride'];
 
-    if (isRideActive() || isPending()) {
-      const message = isPending()
+    if (isRideActive || isPending) {
+      const message = isPending
         ? 'You already have an active request.'
         : 'You already have an active ride.';
-      const destination = isPending() ? '/waiting-for-driver' : '/driver-coming';
+      const destination = isPending ? '/waiting-for-driver' : '/driver-coming';
 
       if (blockedPaths.includes(location.pathname)) {
         alert(message);
@@ -267,13 +223,12 @@ function AppContent({ userId }: { userId: string }) {
     }
   };
 
-  const isRideActive = () => {
-    return rideStatus === 'accepted' || rideStatus === 'arrived' || rideStatus === 'in_progress';
-  };
+  const isRideActive = Boolean(order && !order.storeId && order.status !== 'pending');
+  const isPending = Boolean(order && order.status === 'pending');
 
-  const isPending = () => {
-    return rideStatus === 'pending';
-  };
+  if (isActiveOrderLoading) {
+    return <div className="fixed inset-0 bg-white" />;
+  }
 
   return (
     <GlobalCartProvider>
@@ -289,7 +244,7 @@ function AppContent({ userId }: { userId: string }) {
               </div>
             )}
           <AnimatePresence>
-            {isRideActive() && driverInfo && location.pathname !== '/driver-coming' && (
+            {isRideActive && driverInfo && location.pathname !== '/driver-coming' && (
               <CurrentRideBar
                 driverName={driverInfo.name}
                 carModel={driverInfo.carModel}
@@ -298,7 +253,7 @@ function AppContent({ userId }: { userId: string }) {
               />
             )}
 
-            {isPending() && location.pathname !== '/waiting-for-driver' && (
+            {isPending && location.pathname !== '/waiting-for-driver' && (
               <WaitingForDriverBar />
             )}
           </AnimatePresence>
@@ -311,7 +266,7 @@ function AppContent({ userId }: { userId: string }) {
                   <PageTransition>
                     <Dashboard
                       onSearchSelect={(address) => {
-                        if (isRideActive()) {
+                        if (isRideActive) {
                           alert('You already have an active ride.');
                           return;
                         }
@@ -325,11 +280,7 @@ function AppContent({ userId }: { userId: string }) {
                 path="/your-route"
                 element={
                   <PageTransition>
-                    {isRideActive() ? (
-                      <Dashboard onSearchSelect={() => alert('You already have an active ride.')} />
-                    ) : (
-                      <YourRoute onRouteComplete={handleRouteComplete} />
-                    )}
+                    <YourRoute onRouteComplete={handleRouteComplete} />
                   </PageTransition>
                 }
               />
@@ -417,17 +368,13 @@ function AppContent({ userId }: { userId: string }) {
                 path="/select-ride"
                 element={
                   <PageTransition>
-                    {isRideActive() ? (
-                      <Dashboard onSearchSelect={() => alert('You already have an active ride.')} />
-                    ) : (
-                      <SelectRide
-                        destination={appState.selectedDestination}
-                        pickup={appState.selectedPickup}
-                        stops={appState.selectedStops}
-                        onBack={handleBack}
-                        onSelectRide={handleRideSelect}
-                      />
-                    )}
+                    <SelectRide
+                      destination={appState.selectedDestination}
+                      pickup={appState.selectedPickup}
+                      stops={appState.selectedStops}
+                      onBack={handleBack}
+                      onSelectRide={handleRideSelect}
+                    />
                   </PageTransition>
                 }
               />
@@ -435,20 +382,16 @@ function AppContent({ userId }: { userId: string }) {
                 path="/confirm-order"
                 element={
                   <PageTransition>
-                    {isRideActive() || isPending() ? (
-                      <Dashboard onSearchSelect={() => alert('You already have an active ride.')} />
-                    ) : (
-                      <ConfirmOrder
-                        destination={appState.selectedDestination}
-                        pickup={appState.selectedPickup}
-                        stops={appState.selectedStops}
-                        carType={appState.selectedCarType}
-                        price={appState.selectedPrice}
-                        onBack={handleBack}
-                        onRideConfirmed={handleConfirmOrder}
-                        onRideCreated={handleRideCreated}
-                      />
-                    )}
+                    <ConfirmOrder
+                      destination={appState.selectedDestination}
+                      pickup={appState.selectedPickup}
+                      stops={appState.selectedStops}
+                      carType={appState.selectedCarType}
+                      price={appState.selectedPrice}
+                      onBack={handleBack}
+                      onRideConfirmed={handleConfirmOrder}
+                      onRideCreated={handleRideCreated}
+                    />
                   </PageTransition>
                 }
               />
