@@ -770,7 +770,7 @@ export const LiveTrackingPage: React.FC = () => {
         isOpen={showRatingModal}
         onClose={() => {
           setShowRatingModal(false);
-          navigate('/');
+          navigate('/', { replace: true });
         }}
         path="store_delivery"
         driverName={driverData?.name || 'Driver'}

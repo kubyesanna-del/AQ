@@ -861,7 +861,7 @@ export const DriverComing: React.FC<DriverComingProps> = ({
           setIsRatingModalOpen(false);
           localStorage.removeItem('currentOrderId');
           localStorage.removeItem('currentOrderType');
-          navigate('/');
+          navigate('/', { replace: true });
         }}
         path={isFood ? 'store_delivery' : 'direct_trip'}
         driverName={driverInfo?.name || 'Driver'}

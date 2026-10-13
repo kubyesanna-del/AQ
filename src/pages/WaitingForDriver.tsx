@@ -6,8 +6,9 @@ import { useUserProfile } from '../hooks/useUserProfile';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { db } from '../config/firebase';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { subscribeToOrder, cancelOrder } from '../services/orderService';
+import { subscribeToOrder } from '../services/orderService';
 import { usePreventBack } from '../hooks/usePreventBack';
+import { buildTrackingState } from '../hooks/useActiveOrder';
 
 interface WaitingForDriverProps {
   destination: string;
@@ -139,21 +140,16 @@ export const WaitingForDriver: React.FC<WaitingForDriverProps> = ({
         setTimeout(() => {
           navigate('/driver-coming', {
             state: {
-              orderId,
-              orderType: order.serviceType,
+              ...buildTrackingState({ ...orderData, ...order }, orderId),
               orderData: {
-                ...orderData,
-                ...order,
-                pickup: order.pickup?.address,
-                destination: order.dropoff?.address,
-                driverId: order.driver?.id,
-                driverInfo: order.driver,
+                ...buildTrackingState({ ...orderData, ...order }, orderId).orderData,
                 encodedPolyline,
                 // Explicitly forward these so DriverComing's mount effect can seed immediately
                 driverToPickupPolyline: (order as any).driverToPickupPolyline ?? undefined,
                 driverToPickupEtaMinutes: (order as any).driverToPickupEtaMinutes ?? undefined,
               }
-            }
+            },
+            replace: true,
           });
         }, 500);
       }
@@ -187,7 +183,9 @@ export const WaitingForDriver: React.FC<WaitingForDriverProps> = ({
     try {
       // Cancel order via unified service
       if (orderId) {
-        await cancelOrder(orderId, 'User cancelled while waiting');
+        await updateDoc(doc(db, 'orders', orderId), {
+          status: 'cancelled',
+        });
       }
 
       // Clear localStorage
@@ -195,7 +193,7 @@ export const WaitingForDriver: React.FC<WaitingForDriverProps> = ({
       localStorage.removeItem('currentOrderType');
 
       setShowCancelConfirmation(false);
-      navigate('/');
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('Error cancelling order:', error);
       setShowCancelConfirmation(false);

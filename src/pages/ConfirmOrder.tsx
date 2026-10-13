@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Users } from 'lucide-react';
 import { MapLibreMap, MapMarker } from '../components/MapLibreMap';
 import { useUserProfile } from '../hooks/useUserProfile';
-import { useRideContext } from '../contexts/RideContext';
+import { useActiveOrder } from '../hooks/useActiveOrder';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../config/firebase';
@@ -61,7 +61,8 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const { profile } = useUserProfile();
-  const { isRideActive } = useRideContext();
+  const { order } = useActiveOrder();
+  const isRideActive = Boolean(order);
   const { latitude, longitude } = useGeolocation();
 
   const {
@@ -401,6 +402,7 @@ export const ConfirmOrder: React.FC<ConfirmOrderProps> = ({
       const navigateTo = isStoreFlow ? '/order-tracking' : '/waiting-for-driver';
 
       navigate(navigateTo, {
+        replace: true,
         state: {
           orderId,
           orderType: isService ? serviceType : (isStoreFlow ? (type || 'food') : 'ride'),

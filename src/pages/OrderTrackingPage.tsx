@@ -8,6 +8,7 @@ import { soundManager } from '../utils/notificationSound';
 import { useGlobalCart } from '../contexts/GlobalCartContext';
 import { usePreventBack } from '../hooks/usePreventBack';
 import { useCall } from '../contexts/CallContext';
+import { buildTrackingState } from '../hooks/useActiveOrder';
 
 interface OrderItem {
   name: string;
@@ -274,7 +275,7 @@ export const OrderTrackingPage: React.FC = () => {
         setRejectionMessage(rejectionDetails.message);
         rejectionTimeoutRef.current = setTimeout(() => {
           clearCart();
-          navigate('/');
+          navigate('/', { replace: true });
         }, 2000);
       }
     } else {
@@ -333,10 +334,9 @@ export const OrderTrackingPage: React.FC = () => {
       transitionDelayRef.current = setTimeout(() => {
         navigate('/live-tracking', {
           state: {
-            orderId,
+            ...buildTrackingState({ ...orderData, id: orderId }, orderId),
             orderData: {
-              ...orderData,
-              id: orderId,
+              ...buildTrackingState({ ...orderData, id: orderId }, orderId).orderData,
               // Carry store info so the store marker and rating modal work.
               storeId: orderData.storeId || (orderData as any).storeId,
               storeName: orderData.storeName || (orderData as any).storeName,
