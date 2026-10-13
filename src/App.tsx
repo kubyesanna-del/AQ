@@ -49,6 +49,7 @@ import { useNotificationPermission } from './hooks/useNotificationPermission';
 import { CallProvider } from './contexts/CallContext';
 import { CallOverlay } from './components/CallOverlay';
 import { ActiveOrderProvider } from './hooks/useActiveOrder';
+import { ActiveOrderGate } from './components/ActiveOrderGate';
 
 interface AppState {
   selectedDestination: string;
@@ -543,6 +544,7 @@ function App() {
         >
       <Router>
         <ActiveOrderProvider uid={authUser!.uid}>
+          <ActiveOrderGate />
           <CallProvider>
             <AppContent userId={authUser!.uid} />
             <CallOverlay />
