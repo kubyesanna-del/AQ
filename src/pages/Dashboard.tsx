@@ -7,8 +7,8 @@ import { ScrollableSection } from '../components/ScrollableSection';
 import { BottomNavigation } from '../components/BottomNavigation';
 import { MapLibreMap } from '../components/MapLibreMap';
 import { getRecentAddresses, reverseGeocode, GeoapifyAddress, RECENT_ADDRESSES_UPDATED_EVENT } from '../services/geoapifyService';
-import { useRideContext } from '../contexts/RideContext';
 import { useGeolocation } from '../hooks/useGeolocation';
+import { useActiveOrder } from '../hooks/useActiveOrder';
 import { useNearbyDrivers, LUSAKA_DEFAULT } from '../hooks/useNearbyDrivers';
 
 interface DashboardProps {
@@ -18,7 +18,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ onSearchSelect }) => {
   const navigate = useNavigate();
   const [panelHeight, setPanelHeight] = useState(450);
-  const { isRideActive, rideStatus } = useRideContext();
+  const { order } = useActiveOrder();
   const { latitude, longitude, loading: locationLoading, error: locationError } = useGeolocation();
   const [recentAddresses, setRecentAddresses] = useState<GeoapifyAddress[]>([]);
   const [isLoadingRecentAddress, setIsLoadingRecentAddress] = useState(false);
@@ -45,36 +45,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSearchSelect }) => {
     };
   }, []);
 
-  const handleNavigationBlock = (destination: string) => {
-    const message = rideStatus === 'pending'
-      ? 'You already have an active request.'
-      : 'You already have an active ride.';
-    alert(message);
-    navigate(destination);
-  };
-
   const handleRidesClick = () => {
-    if (isRideActive || rideStatus === 'pending') {
-      handleNavigationBlock(rideStatus === 'pending' ? '/waiting-for-driver' : '/driver-coming');
-    } else {
-      navigate('/your-route');
-    }
+    if (order) return;
+    navigate('/your-route');
   };
 
   const handleWhereToClick = () => {
-    if (isRideActive || rideStatus === 'pending') {
-      handleNavigationBlock(rideStatus === 'pending' ? '/waiting-for-driver' : '/driver-coming');
-    } else {
-      navigate('/your-route');
-    }
+    if (order) return;
+    navigate('/your-route');
   };
 
   // Handle recent address click - get current location and navigate to SelectRide
   const handleRecentAddressClick = useCallback(async (recentAddress: GeoapifyAddress) => {
-    if (isRideActive || rideStatus === 'pending') {
-      handleNavigationBlock(rideStatus === 'pending' ? '/waiting-for-driver' : '/driver-coming');
-      return;
-    }
+    if (order) return;
 
     // Show loading state
     setIsLoadingRecentAddress(true);
@@ -123,9 +106,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSearchSelect }) => {
     } finally {
       setIsLoadingRecentAddress(false);
     }
-  }, [latitude, longitude, locationLoading, locationError, isRideActive, rideStatus, navigate]);
+  }, [latitude, longitude, locationLoading, locationError, order, navigate]);
 
   const handleAletwendeClick = () => {
+    if (order) return;
     navigate('/aletwende-send');
   };
 
@@ -171,7 +155,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSearchSelect }) => {
                 onClick={() => {
                   if (service.action) {
                     service.action();
-                  } else if (service.id === 'schedule') {
+                  } else if (service.id === 'schedule' && !order) {
                     navigate('/schedule-ride');
                   }
                 }}
@@ -202,7 +186,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onSearchSelect }) => {
               </div>
               {/* Schedule button inside search box */}
               <button
-                onClick={() => navigate('/schedule-ride')}
+                onClick={() => {
+                  if (order) return;
+                  navigate('/schedule-ride');
+                }}
                 className="px-4 py-3 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border-l border-gray-200 dark:border-gray-700"
               >
                 <Calendar className="text-gray-600 dark:text-gray-300" size={20} />
